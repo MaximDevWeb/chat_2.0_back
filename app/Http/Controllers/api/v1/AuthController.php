@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\api\v1;
 
 use App\Events\UserCreated;
+use App\Exceptions\EmailTokenNotFoundException;
 use App\Exceptions\UserNotCreatedException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\auth\EmailVerificationRequest;
 use App\Http\Requests\auth\RegisterRequest;
 use App\Http\Resources\SuccessResource;
+use App\Models\EmailToken;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 
@@ -26,6 +29,25 @@ class AuthController extends Controller
             throw new UserNotCreatedException();
         }
 
-        return new SuccessResource($user);
+        return new SuccessResource($request);
+    }
+
+    public function emailVerification(EmailVerificationRequest $request): SuccessResource
+    {
+        $request->validated();
+
+        $emailToken = EmailToken::query()
+            ->where('token', $request->token)
+            ->firstOr(function () {
+                throw new EmailTokenNotFoundException();
+            });
+
+        $emailToken->user()->update([
+            'email_verified_at' => now(),
+        ]);
+
+        $emailToken->delete();
+
+        return new SuccessResource($request);
     }
 }
