@@ -5,13 +5,19 @@ namespace App\Http\Controllers\api\v1;
 use App\Events\UserCreated;
 use App\Exceptions\EmailTokenNotFoundException;
 use App\Exceptions\UserNotCreatedException;
+use App\Exceptions\UserNotFoundException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\auth\EmailVerificationRequest;
+use App\Http\Requests\auth\LoginRequest;
 use App\Http\Requests\auth\RegisterRequest;
+use App\Http\Resources\AuthResource;
+use App\Http\Resources\AuthUserResource;
 use App\Http\Resources\SuccessResource;
 use App\Models\EmailToken;
 use App\Models\User;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -49,5 +55,28 @@ class AuthController extends Controller
         $emailToken->delete();
 
         return new SuccessResource($request);
+    }
+
+    public function login(LoginRequest $request): AuthResource
+    {
+        $request->validated();
+        $user = User::query()
+            ->where('email', $request->email)
+            ->firstOr(function () {
+                throw new UserNotFoundException();
+            });
+
+        if (! Hash::check($request->password, $user->password)) {
+            throw ValidationException::withMessages([
+                'email' => ['Email и пароль не совпадают'],
+            ]);
+        }
+
+        return new AuthResource($user);
+    }
+
+    public function session(): AuthUserResource
+    {
+        return new AuthUserResource(auth()->user());
     }
 }
