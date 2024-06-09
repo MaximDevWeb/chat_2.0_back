@@ -16,6 +16,7 @@ use App\Http\Resources\SuccessResource;
 use App\Models\EmailToken;
 use App\Models\User;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -78,5 +79,12 @@ class AuthController extends Controller
     public function session(): AuthUserResource
     {
         return new AuthUserResource(auth()->user());
+    }
+
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return new SuccessResource($request);
     }
 }
